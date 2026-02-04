@@ -1,6 +1,0 @@
-mediapipe
-opencv-python
-numpy
-scikit-learn
-torch
-eyeGestures
