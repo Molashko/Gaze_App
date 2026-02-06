@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 
 from .landmarks import RIGHT_EYE, LEFT_EYE
-from .logging_utils import log
 
 
 def get_point_2d(index: int, landmarks, w: int, h: int) -> np.ndarray:
@@ -57,8 +56,7 @@ def get_eye_bbox_2d(
         bottom_y = max(bottom_lid[1], bottom_inner[1], bottom_outer[1])
 
         return (left_x, right_x, top_y, bottom_y)
-    except Exception as exc:
-        log(f"Error in get_eye_bbox_2d: {exc}")
+    except Exception:
         return None
 
 
@@ -120,8 +118,7 @@ def compute_gaze_vector_3d(
         gaze_y = np.dot(gaze_dir, eye_vertical)
 
         return float(gaze_x), float(gaze_y)
-    except Exception as exc:
-        log(f"Error in compute_gaze_vector_3d: {exc}")
+    except Exception:
         return None
 
 

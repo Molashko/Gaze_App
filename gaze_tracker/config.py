@@ -1,5 +1,3 @@
-LOG_FILE = "gaze_debug.log"
-
 # Camera
 CAMERA_INDEX = 0
 CAMERA_WIDTH = 640

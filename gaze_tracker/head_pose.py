@@ -5,7 +5,6 @@ import numpy as np
 
 from .config import CAMERA_FOCAL_LENGTH, CAMERA_CENTER, CAMERA_DIST_COEFFS
 from .landmarks import FACE_3D_MODEL, HEAD_POSE_LANDMARKS
-from .logging_utils import log
 
 
 def _rotation_matrix_to_euler_angles(R: np.ndarray) -> Tuple[float, float, float]:
@@ -81,6 +80,5 @@ def estimate_head_pose(landmarks, img_w: int, img_h: int) -> Tuple[float, float,
             return (0.0, 0.0, 0.0)
 
         return float(yaw), float(pitch), float(roll)
-    except Exception as exc:
-        log(f"Head pose error: {exc}")
+    except Exception:
         return (0.0, 0.0, 0.0)

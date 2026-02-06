@@ -33,12 +33,10 @@ from ..config import (
     CALIBRATION_MIN_SAMPLES,
     CALIBRATION_WARMUP_RATIO,
     WARMUP_FRAMES,
-    LOG_INTERVAL,
 )
 from ..gaze_estimation import extract_gaze_features, get_point_2d, get_iris_center_2d
 from ..head_pose import estimate_head_pose
 from ..landmarks import RIGHT_EYE, LEFT_EYE
-from ..logging_utils import log
 from ..tracker import GazeTracker
 
 try:
@@ -101,7 +99,6 @@ class GazeApp:
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
 
-        log(f"=== App started v3 === Screen: {self.screen_w}x{self.screen_h}")
 
     def _get_screen_size(self) -> Tuple[int, int]:
         try:
@@ -168,7 +165,6 @@ class GazeApp:
             messagebox.showinfo("Калибровка", "Сначала остановите отслеживание")
             return
 
-        log("=== CALIBRATION STARTED v3 ===")
         self.calibrating = True
         self.calibration_complete = False
         self.current_calib_idx = 0
@@ -187,7 +183,6 @@ class GazeApp:
 
         self.status_var.set("Отслеживание...")
         self.tracking_active = True
-        log("=== TRACKING STARTED ===")
 
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             max_num_faces=1,
@@ -195,7 +190,6 @@ class GazeApp:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        log("MediaPipe FaceMesh initialized (478 landmarks)")
 
         cap = cv2.VideoCapture(CAMERA_INDEX)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAMERA_WIDTH)
@@ -203,7 +197,6 @@ class GazeApp:
         cap.set(cv2.CAP_PROP_FPS, CAMERA_FPS)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, CAMERA_BUFFERSIZE)
         self._cap = cap
-        log("Camera opened")
 
         display_w, display_h = self.screen_w, self.screen_h
         cv2.namedWindow(WINDOW_GAZE, cv2.WINDOW_NORMAL)
@@ -293,7 +286,6 @@ class GazeApp:
                     self.tracker.finalize_calibration()
                     self.calibration_complete = True
                     self.calibrating = False
-                    log("=== CALIBRATION COMPLETE ===")
                     self.status_var.set("Калибровка завершена!")
                 else:
                     cx, cy = self.calib_points[self.current_calib_idx]
@@ -301,7 +293,6 @@ class GazeApp:
                     if self.calib_point_start is None:
                         self.calib_point_start = now
                         self.calib_samples.clear()
-                        log(f"Calibration point {self.current_calib_idx + 1}/{len(self.calib_points)}: ({cx}, {cy})")
 
                     elapsed = now - self.calib_point_start
                     progress = min(1.0, elapsed / self.calib_hold_time)
@@ -350,10 +341,6 @@ class GazeApp:
                         screen_x_norm = cx / self.screen_w
                         screen_y_norm = cy / self.screen_h
                         self.tracker.add_calibration_sample(median_feature, (screen_x_norm, screen_y_norm))
-                        log(
-                            f"Point {self.current_calib_idx + 1}: features={median_feature.round(3).tolist()} "
-                            f"-> screen=({screen_x_norm:.2f}, {screen_y_norm:.2f})"
-                        )
                         self.current_calib_idx += 1
                         self.calib_point_start = None
                         self.calib_samples.clear()
@@ -362,8 +349,6 @@ class GazeApp:
                 feature_vec = self.tracker.build_feature_vector(gaze_features, self.current_head_pose)
                 screen_pos = self.tracker.predict_screen(feature_vec)
                 if screen_pos is not None:
-                    if frame_count % LOG_INTERVAL == 0:
-                        log(f"Prediction: ({screen_pos[0]:.0f}, {screen_pos[1]:.0f})")
 
                     screen_x, screen_y = screen_pos
                     screen_x = max(0, min(self.screen_w - 1, screen_x))
@@ -407,13 +392,11 @@ class GazeApp:
                 break
 
         self.tracking_active = False
-        log("=== TRACKING STOPPED ===")
 
         if self.face_mesh:
             try:
                 self.face_mesh.close()
             except Exception as exc:
-                log(f"Warning: face_mesh.close failed: {exc}")
             finally:
                 self.face_mesh = None
         if cap:
@@ -422,7 +405,6 @@ class GazeApp:
         self.status_var.set("Отслеживание остановлено")
 
     def _reset_calibration(self) -> None:
-        log("Calibration reset")
         self.calibrating = False
         self.calibration_complete = False
         self.current_calib_idx = 0
@@ -439,7 +421,6 @@ class GazeApp:
             try:
                 self.face_mesh.close()
             except Exception as exc:
-                log(f"Warning: face_mesh.close failed: {exc}")
             finally:
                 self.face_mesh = None
         cv2.destroyAllWindows()

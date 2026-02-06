@@ -13,7 +13,6 @@ from .config import (
     RANSAC_RESIDUAL_THRESHOLD,
     RANSAC_MAX_TRIALS,
 )
-from .logging_utils import log
 
 
 @dataclass
@@ -34,7 +33,6 @@ class RegressionCalibrator:
 
     def fit(self) -> bool:
         if len(self.samples) < 5:
-            log("Not enough calibration samples for regression")
             return False
 
         X = np.array([s[0] for s in self.samples], dtype=np.float64)
@@ -73,7 +71,6 @@ class RegressionCalibrator:
         self.result = CalibrationResult(
             model_x=model_x, model_y=model_y, poly=poly, scaler=scaler
         )
-        log("Regression calibration fitted")
         return True
 
     def predict(self, features: np.ndarray) -> Optional[Tuple[float, float]]:
