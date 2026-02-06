@@ -16,12 +16,22 @@ def get_point_3d(index: int, landmarks) -> np.ndarray:
     return np.array([lm.x, lm.y, lm.z], dtype=np.float64)
 
 
+def _clip01(value: float) -> float:
+    return float(np.clip(value, 0.0, 1.0))
+
+
 def get_iris_center_2d(eye_dict: dict, landmarks, w: int, h: int) -> Optional[np.ndarray]:
     try:
         iris_pts = np.array(
             [get_point_2d(idx, landmarks, w, h) for idx in eye_dict["iris_points"]],
             dtype=np.float32,
         )
+        if iris_pts.shape[0] >= 5:
+            try:
+                (cx, cy), _, _ = cv2.fitEllipse(iris_pts)
+                return np.array([cx, cy], dtype=np.float64)
+            except Exception:
+                pass
         (cx, cy), _ = cv2.minEnclosingCircle(iris_pts)
         return np.array([cx, cy], dtype=np.float64)
     except Exception:
@@ -85,8 +95,14 @@ def compute_gaze_vector_3d(
         bottom_3d = get_point_3d(eye_dict["bottom_lid"], landmarks)
         iris_3d = get_point_3d(eye_dict["iris_center"], landmarks)
 
-        eye_center_3d = (inner_3d + outer_3d + top_3d + bottom_3d) / 4.0
+        mid_horizontal = (inner_3d + outer_3d) / 2.0
+        mid_vertical = (top_3d + bottom_3d) / 2.0
+        eye_center_3d = (mid_horizontal + mid_vertical) / 2.0
         gaze_dir = iris_3d - eye_center_3d
+        gaze_norm = np.linalg.norm(gaze_dir)
+        if gaze_norm < 1e-4:
+            return None
+        gaze_dir = gaze_dir / gaze_norm
 
         eye_horizontal = outer_3d - inner_3d
         eye_h_norm = np.linalg.norm(eye_horizontal)
@@ -100,13 +116,36 @@ def compute_gaze_vector_3d(
             return None
         eye_vertical = eye_vertical / eye_v_norm
 
-        gaze_x = np.dot(gaze_dir, eye_horizontal) / eye_h_norm
-        gaze_y = np.dot(gaze_dir, eye_vertical) / eye_v_norm
+        gaze_x = np.dot(gaze_dir, eye_horizontal)
+        gaze_y = np.dot(gaze_dir, eye_vertical)
 
         return float(gaze_x), float(gaze_y)
     except Exception as exc:
         log(f"Error in compute_gaze_vector_3d: {exc}")
         return None
+
+
+def _eye_quality(y_norm: Optional[float], ar: Optional[float]) -> float:
+    if y_norm is None or ar is None:
+        return 0.0
+    openness = _clip01((ar - 0.12) / 0.18)
+    edge_dist = min(y_norm, 1.0 - y_norm)
+    y_score = _clip01((edge_dist - 0.05) / 0.15)
+    return openness * y_score
+
+
+def _weighted_mean(values, weights, default: float) -> float:
+    num = 0.0
+    den = 0.0
+    for val, weight in zip(values, weights):
+        if val is None or weight <= 0.0:
+            continue
+        num += float(val) * float(weight)
+        den += float(weight)
+    if den > 0.0:
+        return float(num / den)
+    valid = [float(v) for v in values if v is not None]
+    return float(np.mean(valid)) if valid else float(default)
 
 
 def extract_gaze_features(landmarks, w: int, h: int) -> Optional[Dict[str, float]]:
@@ -118,18 +157,25 @@ def extract_gaze_features(landmarks, w: int, h: int) -> Optional[Dict[str, float
 
     if gx_r is None and gx_l is None:
         return None
+    q_r = _eye_quality(gy_r, ar_r)
+    q_l = _eye_quality(gy_l, ar_l)
 
-    gx_vals = [v for v in [gx_r, gx_l] if v is not None]
-    gy_vals = [v for v in [gy_r, gy_l] if v is not None]
-    ar_vals = [v for v in [ar_r, ar_l] if v is not None]
+    gx = _weighted_mean([gx_r, gx_l], [q_r, q_l], 0.5)
+    gy = _weighted_mean([gy_r, gy_l], [q_r, q_l], 0.5)
+    ar = _weighted_mean([ar_r, ar_l], [q_r, q_l], 0.3)
 
-    g3x_vals = [v[0] for v in [g3_r, g3_l] if v is not None]
-    g3y_vals = [v[1] for v in [g3_r, g3_l] if v is not None]
+    g3x_r = g3_r[0] if g3_r is not None else None
+    g3y_r = g3_r[1] if g3_r is not None else None
+    g3x_l = g3_l[0] if g3_l is not None else None
+    g3y_l = g3_l[1] if g3_l is not None else None
+
+    g3x = _weighted_mean([g3x_r, g3x_l], [q_r, q_l], 0.0)
+    g3y = _weighted_mean([g3y_r, g3y_l], [q_r, q_l], 0.0)
 
     return {
-        "gaze_x_2d": float(np.mean(gx_vals)) if gx_vals else 0.5,
-        "gaze_y_2d": float(np.mean(gy_vals)) if gy_vals else 0.5,
-        "gaze_x_3d": float(np.mean(g3x_vals)) if g3x_vals else 0.0,
-        "gaze_y_3d": float(np.mean(g3y_vals)) if g3y_vals else 0.0,
-        "eye_aspect": float(np.mean(ar_vals)) if ar_vals else 0.3,
+        "gaze_x_2d": float(gx),
+        "gaze_y_2d": float(gy),
+        "gaze_x_3d": float(g3x),
+        "gaze_y_3d": float(g3y),
+        "eye_aspect": float(ar),
     }

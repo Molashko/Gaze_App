@@ -3,6 +3,7 @@ from typing import Tuple
 import cv2
 import numpy as np
 
+from .config import CAMERA_FOCAL_LENGTH, CAMERA_CENTER, CAMERA_DIST_COEFFS
 from .landmarks import FACE_3D_MODEL, HEAD_POSE_LANDMARKS
 from .logging_utils import log
 
@@ -41,13 +42,23 @@ def estimate_head_pose(landmarks, img_w: int, img_h: int) -> Tuple[float, float,
             dtype=np.float64,
         )
 
-        focal_length = img_w
-        center = (img_w / 2, img_h / 2)
+        if CAMERA_FOCAL_LENGTH is None:
+            focal_length = 0.5 * (img_w + img_h)
+        else:
+            focal_length = float(CAMERA_FOCAL_LENGTH)
+
+        if CAMERA_CENTER is None:
+            center = (img_w / 2, img_h / 2)
+        else:
+            center = (float(CAMERA_CENTER[0]), float(CAMERA_CENTER[1]))
         camera_matrix = np.array(
             [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
             dtype=np.float64,
         )
-        dist_coeffs = np.zeros((4, 1))
+        if CAMERA_DIST_COEFFS is None:
+            dist_coeffs = np.zeros((4, 1))
+        else:
+            dist_coeffs = np.asarray(CAMERA_DIST_COEFFS, dtype=np.float64).reshape(-1, 1)
 
         success, rvec, tvec = cv2.solvePnP(
             FACE_3D_MODEL,

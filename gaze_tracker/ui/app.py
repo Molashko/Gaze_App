@@ -16,6 +16,7 @@ from ..config import (
     CAMERA_FPS,
     CAMERA_BUFFERSIZE,
     CALIBRATION_GRID,
+    CALIBRATION_EXTRA_POINTS,
     CALIBRATION_HOLD_TIME,
     CALIBRATION_MIN_SAMPLES,
     CALIBRATION_WARMUP_RATIO,
@@ -82,6 +83,9 @@ class GazeApp:
         for y_pct in CALIBRATION_GRID:
             for x_pct in CALIBRATION_GRID:
                 points.append((int(x_pct * self.screen_w), int(y_pct * self.screen_h)))
+        for x_pct, y_pct in CALIBRATION_EXTRA_POINTS:
+            points.append((int(x_pct * self.screen_w), int(y_pct * self.screen_h)))
+        points = list(dict.fromkeys(points))
         return points
 
     def _build_ui(self) -> None:

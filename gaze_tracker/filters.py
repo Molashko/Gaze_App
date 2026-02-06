@@ -67,3 +67,4 @@ class MedianFilter:
     def reset(self) -> None:
         self.history_x.clear()
         self.history_y.clear()
+  
