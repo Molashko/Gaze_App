@@ -1,6 +1,6 @@
+# -*- coding: utf-8 -*-
 import ctypes
-import threading
-import subprocess
+import os
 import time
 from typing import List, Tuple
 
@@ -8,6 +8,18 @@ import cv2
 import numpy as np
 import tkinter as tk
 from tkinter import messagebox
+
+WINDOW_GAZE = "Вывод взгляда"
+WINDOW_CAMERA = "Камера"
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+    PIL_AVAILABLE = True
+except Exception:
+    Image = None
+    ImageDraw = None
+    ImageFont = None
+    PIL_AVAILABLE = False
 
 from ..config import (
     CAMERA_INDEX,
@@ -37,6 +49,33 @@ except ImportError:
     MEDIAPIPE_AVAILABLE = False
 
 
+def _draw_text(
+    img: np.ndarray,
+    text: str,
+    org: Tuple[int, int],
+    font_scale: float = 0.7,
+    color: Tuple[int, int, int] = (255, 255, 255),
+    thickness: int = 1,
+) -> None:
+    if not PIL_AVAILABLE:
+        cv2.putText(img, text, org, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness)
+        return
+
+    font_size = max(12, int(font_scale * 32))
+    font_path = r"C:\Windows\Fonts\arial.ttf"
+    if os.path.exists(font_path):
+        font = ImageFont.truetype(font_path, font_size)
+    else:
+        font = ImageFont.load_default()
+
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    pil_img = Image.fromarray(rgb)
+    draw = ImageDraw.Draw(pil_img)
+    x, y = int(org[0]), int(org[1])
+    draw.text((x, y), text, font=font, fill=(int(color[2]), int(color[1]), int(color[0])))
+    img[:, :, :] = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+
 class GazeApp:
     def __init__(self) -> None:
         self.screen_w, self.screen_h = self._get_screen_size()
@@ -57,8 +96,8 @@ class GazeApp:
         self.current_head_pose = (0.0, 0.0, 0.0)
 
         self.root = tk.Tk()
-        self.root.title("Gaze Tracker v3")
-        self.status_var = tk.StringVar(value="Ready")
+        self.root.title("Трекер взгляда v3")
+        self.status_var = tk.StringVar(value="Готово")
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._quit)
 
@@ -88,50 +127,45 @@ class GazeApp:
         points = list(dict.fromkeys(points))
         return points
 
+    def _add_button(
+        self,
+        frame: tk.Frame,
+        text: str,
+        command,
+        *,
+        pady: Tuple[int, int] | int = 4,
+        **kwargs,
+    ) -> None:
+        tk.Button(frame, text=text, command=command, **kwargs).pack(fill="x", pady=pady)
+
+    def _ensure_mediapipe(self) -> bool:
+        if MEDIAPIPE_AVAILABLE:
+            return True
+        messagebox.showerror("Ошибка", "MediaPipe не установлен")
+        return False
+
     def _build_ui(self) -> None:
         frame = tk.Frame(self.root, padx=12, pady=12)
         frame.pack(fill="both", expand=True)
 
-        tk.Label(frame, text="Gaze Tracker v3", font=("Segoe UI", 14, "bold")).pack(pady=(0, 8))
-        info_text = (
-            "1. Sit comfortably, face the camera\n"
-            "2. Click 'Calibrate' and follow the dots\n"
-            "3. Keep your head relatively still"
-        )
-        tk.Label(frame, text=info_text, justify="left", fg="#555").pack(pady=(0, 10))
+        tk.Label(frame, text="Трекер взгляда v3", font=("Segoe UI", 14, "bold")).pack(pady=(0, 8))
+        tk.Label(frame, text="", justify="left", fg="#555").pack(pady=(0, 10))
 
-        tk.Button(frame, text="Install Dependencies", command=self._install_deps).pack(fill="x", pady=4)
-        tk.Button(frame, text="Calibrate", command=self._run_calibration, bg="#4CAF50", fg="white").pack(fill="x", pady=4)
-        tk.Button(frame, text="Reset Calibration", command=self._reset_calibration).pack(fill="x", pady=4)
-        tk.Button(frame, text="Start Tracking", command=self._start_tracking).pack(fill="x", pady=4)
-        tk.Button(frame, text="Exit", command=self._quit).pack(fill="x", pady=(12, 0))
+        self._add_button(frame, "Калибровка", self._run_calibration, bg="#4CAF50", fg="white")
+        self._add_button(frame, "Сброс калибровки", self._reset_calibration)
+        self._add_button(frame, "Начать отслеживание", self._start_tracking)
+        self._add_button(frame, "Выход", self._quit, pady=(12, 0))
 
         if not MEDIAPIPE_AVAILABLE:
-            tk.Label(frame, text="MediaPipe not installed!", fg="red").pack(anchor="w")
+            tk.Label(frame, text="MediaPipe не установлен!", fg="red").pack(anchor="w")
 
         tk.Label(frame, textvariable=self.status_var, fg="#444").pack(pady=(10, 0))
 
-    def _install_deps(self) -> None:
-        self.status_var.set("Installing...")
-
-        def worker():
-            try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-                self.status_var.set("Installed!")
-                messagebox.showinfo("Done", "Dependencies installed")
-            except Exception as exc:
-                self.status_var.set("Install error")
-                messagebox.showerror("Error", f"Install error:\n{exc}")
-
-        import sys
-        threading.Thread(target=worker, daemon=True).start()
-
     def _run_calibration(self) -> None:
-        if not MEDIAPIPE_AVAILABLE:
-            messagebox.showerror("Error", "MediaPipe not installed")
+        if not self._ensure_mediapipe():
             return
         if self.tracking_active:
-            messagebox.showinfo("Calibration", "Stop tracking first")
+            messagebox.showinfo("Калибровка", "Сначала остановите отслеживание")
             return
 
         log("=== CALIBRATION STARTED v3 ===")
@@ -141,18 +175,17 @@ class GazeApp:
         self.calib_point_start = None
         self.calib_samples.clear()
         self.tracker.reset()
-        self.status_var.set("Calibrating... Look at red dots")
+        self.status_var.set("Калибровка... Смотрите на красные точки")
         self._start_tracking()
 
     def _start_tracking(self) -> None:
-        if not MEDIAPIPE_AVAILABLE:
-            messagebox.showerror("Error", "MediaPipe not installed")
+        if not self._ensure_mediapipe():
             return
         if self.tracking_active:
-            messagebox.showinfo("Tracking", "Already running")
+            messagebox.showinfo("Отслеживание", "Уже запущено")
             return
 
-        self.status_var.set("Tracking...")
+        self.status_var.set("Отслеживание...")
         self.tracking_active = True
         log("=== TRACKING STARTED ===")
 
@@ -173,11 +206,11 @@ class GazeApp:
         log("Camera opened")
 
         display_w, display_h = self.screen_w, self.screen_h
-        cv2.namedWindow("Gaze Output", cv2.WINDOW_NORMAL)
-        cv2.setWindowProperty("Gaze Output", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        cv2.namedWindow("Camera", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Camera", 480, 360)
-        cv2.moveWindow("Camera", 10, 10)
+        cv2.namedWindow(WINDOW_GAZE, cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty(WINDOW_GAZE, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        cv2.namedWindow(WINDOW_CAMERA, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(WINDOW_CAMERA, 480, 360)
+        cv2.moveWindow(WINDOW_CAMERA, 10, 10)
 
         frame_count = 0
 
@@ -191,17 +224,16 @@ class GazeApp:
 
             if frame_count < WARMUP_FRAMES:
                 canvas = np.zeros((display_h, display_w, 3), dtype=np.uint8)
-                cv2.putText(
+                _draw_text(
                     canvas,
-                    "Camera warming up...",
+                    "Камера прогревается...",
                     (display_w // 2 - 150, display_h // 2),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1.0,
-                    (255, 255, 255),
-                    2,
+                    font_scale=1.0,
+                    color=(255, 255, 255),
+                    thickness=2,
                 )
-                cv2.imshow("Gaze Output", canvas)
-                cv2.imshow("Camera", frame)
+                cv2.imshow(WINDOW_GAZE, canvas)
+                cv2.imshow(WINDOW_CAMERA, frame)
                 cv2.waitKey(1)
                 continue
 
@@ -227,36 +259,33 @@ class GazeApp:
 
                 gaze_features = extract_gaze_features(landmarks, img_w, img_h)
                 if gaze_features:
-                    cv2.putText(
+                    _draw_text(
                         cam_display,
-                        f"Gaze2D: ({gaze_features['gaze_x_2d']:.3f}, {gaze_features['gaze_y_2d']:.3f})",
+                        f"Взгляд2D: ({gaze_features['gaze_x_2d']:.3f}, {gaze_features['gaze_y_2d']:.3f})",
                         (10, 25),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.55,
-                        (0, 255, 255),
-                        2,
+                        font_scale=0.55,
+                        color=(0, 255, 255),
+                        thickness=2,
                     )
-                    cv2.putText(
+                    _draw_text(
                         cam_display,
-                        f"Head: Y={yaw:.0f} P={pitch:.0f}",
+                        f"Голова: Y={yaw:.0f} P={pitch:.0f}",
                         (10, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        (255, 200, 0),
-                        1,
+                        font_scale=0.5,
+                        color=(255, 200, 0),
+                        thickness=1,
                     )
             else:
-                cv2.putText(
+                _draw_text(
                     cam_display,
-                    "Face not detected!",
+                    "Лицо не обнаружено!",
                     (10, 25),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 0, 255),
-                    2,
+                    font_scale=0.7,
+                    color=(0, 0, 255),
+                    thickness=2,
                 )
 
-            cv2.imshow("Camera", cam_display)
+            cv2.imshow(WINDOW_CAMERA, cam_display)
             canvas = np.zeros((display_h, display_w, 3), dtype=np.uint8)
 
             if self.calibrating and not self.calibration_complete:
@@ -265,7 +294,7 @@ class GazeApp:
                     self.calibration_complete = True
                     self.calibrating = False
                     log("=== CALIBRATION COMPLETE ===")
-                    self.status_var.set("Calibration complete!")
+                    self.status_var.set("Калибровка завершена!")
                 else:
                     cx, cy = self.calib_points[self.current_calib_idx]
                     now = time.time()
@@ -290,12 +319,30 @@ class GazeApp:
                     cv2.circle(canvas, (cx, cy), 25, (255, 255, 255), -1)
                     cv2.circle(canvas, (cx, cy), 8, (0, 0, 255), -1)
 
-                    cv2.putText(canvas, f"Calibration: {self.current_calib_idx + 1}/{len(self.calib_points)}",
-                                (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-                    cv2.putText(canvas, "LOOK AT THE RED DOT",
-                                (10, 85), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 200, 255), 2)
-                    cv2.putText(canvas, f"Samples: {len(self.calib_samples)}/{self.calib_min_samples}",
-                                (10, 125), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (180, 180, 180), 2)
+                    _draw_text(
+                        canvas,
+                        f"Калибровка: {self.current_calib_idx + 1}/{len(self.calib_points)}",
+                        (10, 40),
+                        font_scale=1.0,
+                        color=(255, 255, 255),
+                        thickness=2,
+                    )
+                    _draw_text(
+                        canvas,
+                        "СМОТРИТЕ НА КРАСНУЮ ТОЧКУ",
+                        (10, 85),
+                        font_scale=0.9,
+                        color=(0, 200, 255),
+                        thickness=2,
+                    )
+                    _draw_text(
+                        canvas,
+                        f"Образцы: {len(self.calib_samples)}/{self.calib_min_samples}",
+                        (10, 125),
+                        font_scale=0.7,
+                        color=(180, 180, 180),
+                        thickness=2,
+                    )
 
                     if elapsed >= self.calib_hold_time and len(self.calib_samples) >= self.calib_min_samples:
                         features = np.array(self.calib_samples, dtype=np.float64)
@@ -330,12 +377,24 @@ class GazeApp:
                     if not self.calibrating:
                         for pt in self.calib_points:
                             cv2.circle(canvas, pt, 15, (50, 50, 50), 2)
-                        cv2.putText(canvas, f"Position: ({dot_x}, {dot_y})",
-                                    (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2)
-                        cv2.putText(canvas, "Look at circles | Press Q to exit",
-                                    (10, display_h - 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 100, 100), 1)
+                        _draw_text(
+                            canvas,
+                            f"Позиция: ({dot_x}, {dot_y})",
+                            (10, 40),
+                            font_scale=1.0,
+                            color=(255, 255, 255),
+                            thickness=2,
+                        )
+                        _draw_text(
+                            canvas,
+                            "Смотрите на круги | Нажмите Q для выхода",
+                            (10, display_h - 25),
+                            font_scale=0.6,
+                            color=(100, 100, 100),
+                            thickness=1,
+                        )
 
-            cv2.imshow("Gaze Output", canvas)
+            cv2.imshow(WINDOW_GAZE, canvas)
 
             try:
                 self.root.update_idletasks()
@@ -360,7 +419,7 @@ class GazeApp:
         if cap:
             cap.release()
         cv2.destroyAllWindows()
-        self.status_var.set("Tracking stopped")
+        self.status_var.set("Отслеживание остановлено")
 
     def _reset_calibration(self) -> None:
         log("Calibration reset")
@@ -368,8 +427,8 @@ class GazeApp:
         self.calibration_complete = False
         self.current_calib_idx = 0
         self.tracker.reset()
-        self.status_var.set("Calibration reset")
-        messagebox.showinfo("Done", "Calibration reset")
+        self.status_var.set("Сброс калибровки")
+        messagebox.showinfo("Готово", "Калибровка сброшена")
 
     def _quit(self) -> None:
         self.tracking_active = False
