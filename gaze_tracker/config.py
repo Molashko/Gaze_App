@@ -1,43 +1,43 @@
 # Камера
-CAMERA_INDEX = 0
-CAMERA_WIDTH = 640
-CAMERA_HEIGHT = 480
-CAMERA_FPS = 30
-CAMERA_BUFFERSIZE = 1
-CAMERA_FOCAL_LENGTH = None
-CAMERA_CENTER = None
-CAMERA_DIST_COEFFS = None
+CAMERA_INDEX = 0  # Индекс камеры в системе (обычно 0 - встроенная/первая камера).
+CAMERA_WIDTH = 640  # Ширина кадра камеры в пикселях.
+CAMERA_HEIGHT = 480  # Высота кадра камеры в пикселях.
+CAMERA_FPS = 30  # Целевая частота кадров захвата.
+CAMERA_BUFFERSIZE = 1  # Размер буфера камеры; 1 снижает задержку потока.
+CAMERA_FOCAL_LENGTH = None  # Фокусное расстояние в пикселях; None = автооценка.
+CAMERA_CENTER = None  # Оптический центр (cx, cy); None = центр кадра.
+CAMERA_DIST_COEFFS = None  # Коэффициенты дисторсии объектива; None = без дисторсии.
 
 # Калибровка
-CALIBRATION_GRID = [0.1, 0.3, 0.5, 0.7, 0.9]
+CALIBRATION_GRID = [0.1, 0.3, 0.5, 0.7, 0.9]  # Базовая сетка нормализованных точек по X/Y.
 CALIBRATION_EXTRA_POINTS = [
-    (0.05, 0.05),
-    (0.95, 0.05),
-    (0.05, 0.95),
-    (0.95, 0.95),
-    (0.5, 0.05),
-    (0.5, 0.95),
-    (0.05, 0.5),
-    (0.95, 0.5),
+    (0.05, 0.05),  # Левый верхний угол (почти край экрана).
+    (0.95, 0.05),  # Правый верхний угол.
+    (0.05, 0.95),  # Левый нижний угол.
+    (0.95, 0.95),  # Правый нижний угол.
+    (0.5, 0.05),  # Верхний центр.
+    (0.5, 0.95),  # Нижний центр.
+    (0.05, 0.5),  # Левый центр.
+    (0.95, 0.5),  # Правый центр.
 ]
-CALIBRATION_HOLD_TIME = 2.7
-CALIBRATION_MIN_SAMPLES = 30
-CALIBRATION_WARMUP_RATIO = 0.3
+CALIBRATION_HOLD_TIME = 2.7  # Сколько секунд удерживать взгляд на одной точке.
+CALIBRATION_MIN_SAMPLES = 30  # Минимум сэмплов на точку для принятия в калибровку.
+CALIBRATION_WARMUP_RATIO = 0.3  # Доля времени на "прогрев" перед сбором сэмплов.
 
 # Выполнение
-WARMUP_FRAMES = 30
-LOG_INTERVAL = 30
+WARMUP_FRAMES = 30  # Кол-во стартовых кадров до начала трекинга/калибровки.
+LOG_INTERVAL = 30  # Интервал сервисных событий в кадрах (сейчас почти не используется).
 
 # Фильтры
-ONE_EURO_MIN_CUTOFF = 0.5
-ONE_EURO_BETA = 0.1
-ONE_EURO_D_CUTOFF = 1.0
-MEDIAN_WINDOW = 15
+ONE_EURO_MIN_CUTOFF = 0.5  # Базовое сглаживание OneEuro (ниже = плавнее, но медленнее).
+ONE_EURO_BETA = 0.1  # Адаптивность к скорости движения (выше = быстрее реакция).
+ONE_EURO_D_CUTOFF = 1.0  # Сглаживание производной в OneEuro.
+MEDIAN_WINDOW = 15  # Окно медианного фильтра для подавления выбросов.
 
 # Модель
-POLY_DEGREE = 2
-RIDGE_ALPHA = 2.0
-USE_RANSAC = True
-RANSAC_MIN_SAMPLES = 0.6
-RANSAC_RESIDUAL_THRESHOLD = 0.07
-RANSAC_MAX_TRIALS = 200
+POLY_DEGREE = 2  # Степень полиномиального расширения признаков.
+RIDGE_ALPHA = 2.0  # Сила L2-регуляризации в Ridge (больше = устойчивее, но грубее).
+USE_RANSAC = True  # Включать ли RANSAC поверх Ridge для отсечения выбросов.
+RANSAC_MIN_SAMPLES = 0.6  # Доля/число минимальных сэмплов для RANSAC-модели.
+RANSAC_RESIDUAL_THRESHOLD = 0.07  # Порог остатка для отделения inlier/outlier.
+RANSAC_MAX_TRIALS = 200  # Максимум итераций поиска устойчивой модели RANSAC.

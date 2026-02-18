@@ -1,6 +1,6 @@
 # Gaze Tracker v3
 
-Python-пакет и desktop-приложение для трекинга взгляда с веб-камеры на базе MediaPipe Face Mesh/Iris.
+Desktop-приложение для трекинга взгляда с веб-камеры на базе MediaPipe Face Mesh/Iris.
 Проект разработан для проведения исследований на профессионалах.
 
 ## Возможности
@@ -16,21 +16,21 @@ Python-пакет и desktop-приложение для трекинга взг
 
 ## Установка
 
-### В режиме разработки (из исходников)
+Установите зависимости:
 ```bash
-python -m pip install -e .
-```
-
-### Обычная установка из локальной папки
-```bash
-python -m pip install .
+python -m pip install -r requirements.txt
 ```
 
 ## Запуск
 
-### Через CLI (после установки)
+### Основной способ
 ```bash
-gaze-tracker
+python main.py
+```
+
+### Через модуль
+```bash
+python -m gaze_tracker
 ```
 
 ### Через Python API
@@ -38,11 +38,6 @@ gaze-tracker
 from gaze_tracker import run_app
 
 run_app()
-```
-
-### Через модуль
-```bash
-python -m gaze_tracker
 ```
 
 ## Быстрый сценарий использования
