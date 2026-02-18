@@ -396,7 +396,8 @@ class GazeApp:
         if self.face_mesh:
             try:
                 self.face_mesh.close()
-            except Exception as exc:
+            except Exception:
+                pass
             finally:
                 self.face_mesh = None
         if cap:
@@ -420,7 +421,8 @@ class GazeApp:
         if self.face_mesh:
             try:
                 self.face_mesh.close()
-            except Exception as exc:
+            except Exception:
+                pass
             finally:
                 self.face_mesh = None
         cv2.destroyAllWindows()

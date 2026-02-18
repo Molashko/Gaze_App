@@ -7,7 +7,6 @@ import numpy as np
 from .calibration import RegressionCalibrator
 from .filters import OneEuroFilter, MedianFilter
 from .config import ONE_EURO_MIN_CUTOFF, ONE_EURO_BETA, ONE_EURO_D_CUTOFF, MEDIAN_WINDOW
-from .logging_utils import log
 
 
 class GazeTracker:

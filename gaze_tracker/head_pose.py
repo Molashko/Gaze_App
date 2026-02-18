@@ -22,7 +22,7 @@ def _rotation_matrix_to_euler_angles(R: np.ndarray) -> Tuple[float, float, float
 
 
 def _normalize_angle_deg(angle: float) -> float:
-    """Normalize angle to a stable range around 0 for head pose."""
+    """Нормализовать угол к стабильному диапазону вокруг 0 для позы головы."""
     angle = (angle + 180.0) % 360.0 - 180.0
     if angle > 90.0:
         angle -= 180.0

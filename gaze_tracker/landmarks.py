@@ -1,7 +1,7 @@
 import numpy as np
 
-# MediaPipe Face Mesh landmarks with refine_landmarks=True:
-# 478 landmarks (468 face + 10 iris)
+# Индексы landmark-точек MediaPipe Face Mesh при refine_landmarks=True:
+# 478 точек (468 лицо + 10 радужка)
 
 RIGHT_EYE = {
     "inner": 133,
@@ -31,12 +31,12 @@ LEFT_EYE = {
 
 FACE_3D_MODEL = np.array(
     [
-        (0.0, 0.0, 0.0),          # Nose tip (1)
-        (0.0, -330.0, -65.0),     # Chin (199)
-        (-225.0, 170.0, -135.0),  # Left eye corner (33)
-        (225.0, 170.0, -135.0),   # Right eye corner (263)
-        (-150.0, -150.0, -125.0), # Left mouth corner (61)
-        (150.0, -150.0, -125.0),  # Right mouth corner (291)
+        (0.0, 0.0, 0.0),          # Кончик носа (1)
+        (0.0, -330.0, -65.0),     # Подбородок (199)
+        (-225.0, 170.0, -135.0),  # Левый угол глаза (33)
+        (225.0, 170.0, -135.0),   # Правый угол глаза (263)
+        (-150.0, -150.0, -125.0), # Левый угол рта (61)
+        (150.0, -150.0, -125.0),  # Правый угол рта (291)
     ],
     dtype=np.float64,
 )

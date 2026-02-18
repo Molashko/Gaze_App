@@ -1,5 +1,5 @@
-from gaze_tracker.ui.app import main
+from gaze_tracker import run_app
 
 
 if __name__ == "__main__":
-    main()
+    run_app()
