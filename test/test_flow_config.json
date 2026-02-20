@@ -1,0 +1,28 @@
+{
+  "flows": {
+    "smoke": {
+      "description": "Быстрая проверка ключевых инвариантов.",
+      "pytest_args": ["-m", "smoke", "-q"]
+    },
+    "full": {
+      "description": "Полный запуск всех модульных тестов.",
+      "pytest_args": ["-q"]
+    },
+    "calibration_only": {
+      "description": "Только модуль калибровки.",
+      "pytest_args": ["tests/test_calibration_module.py", "-q"]
+    },
+    "gaze_only": {
+      "description": "Только модуль признаков взгляда.",
+      "pytest_args": ["tests/test_gaze_features_module.py", "-q"]
+    },
+    "head_pose_only": {
+      "description": "Только модуль оценки позы головы.",
+      "pytest_args": ["tests/test_head_pose_module.py", "-q"]
+    },
+    "tracker_only": {
+      "description": "Только модуль трекера.",
+      "pytest_args": ["tests/test_tracker_module.py", "-q"]
+    }
+  }
+}
